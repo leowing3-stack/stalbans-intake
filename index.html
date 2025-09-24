@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>St. Albans Design Community Networking</title>
+  <!-- Roboto -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #00f801;
+      --text-color: #000000;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background-color: var(--primary-color);
+      font-family: 'Roboto', sans-serif;
+      color: var(--text-color);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .container {
+      width: 100%;
+      max-width: 640px;
+      text-align: center;
+    }
+    img.logo {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 1rem;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+    #form-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #user-input {
+      width: 100%;
+      max-width: 560px;
+      padding: 1rem 1.5rem;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 40px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      outline: none;
+    }
+    #user-input:focus {
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
+    }
+    .helper {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    .error {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: #ff0000;
+      display: none;
+    }
+    #thank-you { display: none; }
+    #thank-you h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+    .submit-another {
+      margin-top: 1rem;
+      color: var(--text-color);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .toast {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      display: none;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Form -->
+    <div id="form-container">
+      <img src="img/logo.png" alt="St. Albans Design logo" class="logo" />
+      <label id="input-label" for="user-input" class="sr-only">Name</label>
+      <input id="user-input" type="text" placeholder="Name" aria-label="Name" autocomplete="off" />
+      <div class="helper" id="helper-text">Press Enter to continue</div>
+      <div class="error" id="error-text"></div>
+    </div>
+
+    <!-- Thank you -->
+    <div id="thank-you">
+      <h1>Thank you for your participation.</h1>
+      <a href="#" class="submit-another">Submit another</a>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Couldn't save — please try again.</div>
+
+  <script>
+    // === CONFIG: Paste your live Apps Script Web App URL here ===
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzMh69ddVrT9bfzpoRKoiyv4ewRbe8zdj0NGLLHc5qjNb7tt7cYusFkBjetgGB3Jbbw/exec';
+
+    // State
+    let step = 0;
+    let submitting = false;
+    let responses = { name: '', profession: '', years: '' };
+
+    // DOM
+    const input       = document.getElementById('user-input');
+    const helperText  = document.getElementById('helper-text');
+    const errorText   = document.getElementById('error-text');
+    const label       = document.getElementById('input-label');
+    const formWrap    = document.getElementById('form-container');
+    const thankYou    = document.getElementById('thank-you');
+    const toast       = document.getElementById('toast');
+
+    const prompts = ['Name', 'Profession', 'Years in Profession'];
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => (toast.style.display = 'none'), 3000);
+    }
+
+    function resetForm() {
+      step = 0;
+      submitting = false;
+      responses = { name: '', profession: '', years: '' };
+      input.type = 'text';
+      input.value = '';
+      input.placeholder = 'Name';
+      input.setAttribute('aria-label', 'Name');
+      label.textContent = 'Name';
+      helperText.style.display = 'block';
+      errorText.style.display = 'none';
+      formWrap.style.display = 'flex';
+      thankYou.style.display = 'none';
+      input.focus();
+    }
+
+    function handleEnter() {
+      const value = input.value.trim();
+
+      if (step === 0) {
+        if (!value) {
+          errorText.textContent = 'Please enter your name.';
+          errorText.style.display = 'block';
+          return;
+        }
+        responses.name = value;
+        step = 1;
+        input.value = '';
+        input.placeholder = 'Profession';
+        input.setAttribute('aria-label', 'Profession');
+        label.textContent = 'Profession';
+        errorText.style.display = 'none';
+        return;
+      }
+
+      if (step === 1) {
+        if (!value) {
+          errorText.textContent = 'Please enter your profession.';
+          errorText.style.display = 'block';
+          return;
+        }
+        responses.profession = value;
+        step = 2;
+        input.value = '';
+        input.type = 'number';
+        input.placeholder = 'Years in Profession';
+        input.setAttribute('aria-label', 'Years in Profession');
+        label.textContent = 'Years in Profession';
+        errorText.style.display = 'none';
+        return;
+      }
+
+      if (step === 2) {
+        const years = parseInt(value, 10);
+        if (isNaN(years) || years < 0) {
+          errorText.textContent = 'Please enter a valid non-negative number.';
+          errorText.style.display = 'block';
+          return;
+        }
+        responses.years = years;
+        errorText.style.display = 'none';
+        submitData(); // proceed to submit
+      }
+    }
+
+    async function submitData() {
+      if (submitting) return;
+      submitting = true;
+
+      // UX: show thank-you immediately (fire-and-forget submission)
+      helperText.style.display = 'none';
+      formWrap.style.display = 'none';
+      thankYou.style.display = 'block';
+
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          mode: 'no-cors', // avoid preflight from GitHub Pages
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            name: responses.name,
+            profession: responses.profession,
+            years: responses.years
+          })
+        });
+        // In no-cors, we can't read the response. Assume success.
+      } catch (err) {
+        // Network failure only (rare). Show a toast but keep thank-you visible.
+        showToast('Could not save — please try again.');
+      } finally {
+        submitting = false;
+      }
+    }
+
+    // Keyboard: Enter to advance/submit
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleEnter();
+      }
+    });
+
+    // Reset flow
+    document.querySelector('.submit-another').addEventListener('click', (e) => {
+      e.preventDefault();
+      resetForm();
+    });
+
+    // Init
+    input.placeholder = prompts[0];
+    input.setAttribute('aria-label', prompts[0]);
+    label.textContent = prompts[0];
+    input.focus();
+  </script>
+</body>
+</html>
